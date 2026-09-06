@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Food Log">
+<meta name="theme-color" content="#10151c">
+<title>Voice Food Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎤</text></svg>">
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #16202b; --muted: #66707c;
+    --accent: #e05a3a; --accent-press: #c44a2d; --line: #e3e6ea; --ok: #2e7d4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10151c; --card: #1a212b; --text: #edf0f3; --muted: #8b95a1;
+      --accent: #e05a3a; --accent-press: #c44a2d; --line: #29323e; --ok: #57b87f;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    display: flex; flex-direction: column;
+    padding-top: env(safe-area-inset-top);
+    -webkit-tap-highlight-color: transparent;
+  }
+  header {
+    display: flex; align-items: center; gap: 4px;
+    padding: 10px 12px 8px;
+  }
+  header .navbtn, header #settingsBtn {
+    background: none; border: none; color: var(--text); font-size: 22px;
+    width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+  }
+  header .navbtn:disabled { color: var(--line); }
+  #dayLabel { flex: 1; text-align: center; font-size: 17px; font-weight: 650; }
+  #totalBar {
+    margin: 0 16px 10px; padding: 12px 16px; border-radius: 14px;
+    background: var(--card); border: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  #totalCal { font-size: 26px; font-weight: 750; }
+  #totalMeta { color: var(--muted); font-size: 13px; }
+  main { flex: 1; overflow-y: auto; padding: 0 16px 190px; }
+  .entry {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .entry-top { display: flex; align-items: baseline; gap: 8px; }
+  .entry-time { color: var(--muted); font-size: 12px; }
+  .entry-total { margin-left: auto; font-weight: 700; }
+  .entry-del {
+    background: none; border: none; color: var(--muted); font-size: 16px;
+    padding: 0 0 0 8px; cursor: pointer;
+  }
+  .entry-text { font-size: 15px; margin-top: 4px; }
+  .entry-items { margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; }
+  .entry-item { display: flex; font-size: 13px; color: var(--muted); gap: 6px; }
+  .entry-item .cal { margin-left: auto; }
+  .entry-note { margin-top: 5px; font-size: 12px; color: var(--muted); font-style: italic; }
+  #empty { text-align: center; color: var(--muted); margin-top: 48px; font-size: 14px; line-height: 1.6; }
+  #banner {
+    position: fixed; left: 16px; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom));
+    background: #b3372b; color: #fff; padding: 10px 14px; border-radius: 12px;
+    font-size: 14px; display: flex; align-items: center; gap: 10px; z-index: 5;
+  }
+  #banner button {
+    margin-left: auto; background: rgba(255,255,255,.18); color: #fff; border: none;
+    border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; flex-shrink: 0;
+  }
+  #liveArea {
+    position: fixed; left: 16px; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom));
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px 14px; font-size: 15px; z-index: 4;
+  }
+  #liveStatus { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+  footer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    padding: 14px 24px calc(18px + env(safe-area-inset-bottom));
+    display: flex; align-items: center; justify-content: center; gap: 26px;
+    background: linear-gradient(to top, var(--bg) 75%, transparent);
+  }
+  #micBtn {
+    width: 84px; height: 84px; border-radius: 50%;
+    border: none; background: var(--accent); color: #fff; font-size: 36px;
+    cursor: pointer; box-shadow: 0 6px 18px rgba(224,90,58,.35);
+  }
+  #micBtn:active { background: var(--accent-press); }
+  #micBtn:disabled { opacity: .55; }
+  #micBtn.listening { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224,90,58,.45); }
+    50% { box-shadow: 0 0 0 18px rgba(224,90,58,0); }
+  }
+  #typeBtn {
+    width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); font-size: 20px; cursor: pointer;
+  }
+  #typeRow {
+    position: fixed; left: 16px; right: 16px; bottom: calc(120px + env(safe-area-inset-bottom));
+    display: flex; gap: 8px; z-index: 6;
+  }
+  #typeRow input {
+    flex: 1; padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); font-size: 16px;
+  }
+  #typeRow button {
+    border: none; border-radius: 12px; background: var(--accent); color: #fff;
+    padding: 0 16px; font-size: 15px; cursor: pointer;
+  }
+  #settings {
+    position: fixed; inset: 0; background: var(--bg); z-index: 10;
+    padding: calc(16px + env(safe-area-inset-top)) 20px 20px;
+  }
+  #settings h2 { font-size: 20px; margin-bottom: 16px; }
+  #settings label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  #settings input {
+    width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); font-size: 15px;
+  }
+  #settings .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  #settings .row { display: flex; gap: 10px; margin-top: 18px; }
+  #settings .row button {
+    flex: 1; padding: 13px; border-radius: 12px; border: none; font-size: 15px; cursor: pointer;
+  }
+  #saveSettings { background: var(--accent); color: #fff; }
+  #closeSettings { background: var(--card); color: var(--text); border: 1px solid var(--line) !important; }
+  .saved-flash { color: var(--ok); font-size: 13px; margin-top: 10px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="navbtn" id="prevDay" aria-label="Previous day">‹</button>
+  <div id="dayLabel">Today</div>
+  <button class="navbtn" id="nextDay" aria-label="Next day">›</button>
+  <button id="settingsBtn" aria-label="Settings">⚙︎</button>
+</header>
+
+<div id="totalBar">
+  <span id="totalCal">0 cal</span>
+  <span id="totalMeta">no entries yet</span>
+</div>
+
+<main id="entries"></main>
+
+<div id="banner" hidden><span id="bannerText"></span><button id="bannerBtn" hidden>Retry</button></div>
+<div id="liveArea" hidden><div id="liveStatus"></div><div id="liveText"></div></div>
+
+<div id="typeRow" hidden>
+  <input id="typeInput" type="text" placeholder="e.g. 10 chicken taquitos, El Monterey"
+         autocomplete="off" enterkeyhint="send">
+  <button id="typeSubmit">Log</button>
+</div>
+
+<footer>
+  <button id="typeBtn" aria-label="Type instead">⌨</button>
+  <button id="micBtn" aria-label="Hold to speak">🎤</button>
+</footer>
+
+<section id="settings" hidden>
+  <h2>Settings</h2>
+  <label for="workerUrlInput">Worker URL (calorie backend)</label>
+  <input id="workerUrlInput" type="url" placeholder="https://food-log.yourname.workers.dev"
+         autocapitalize="off" autocorrect="off" spellcheck="false">
+  <p class="hint">Paste the Cloudflare Worker URL here. Spoken text is sent to this backend for
+     calorie estimation. Entries are stored only on this device.</p>
+  <div class="row">
+    <button id="closeSettings">Close</button>
+    <button id="saveSettings">Save</button>
+  </div>
+  <p class="saved-flash" id="savedFlash" hidden>Saved ✓</p>
+</section>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- storage ----------
+  const URL_KEY = "vfl.workerUrl";
+  const ymd = (d) => [d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0")].join("-");
+  const logKey = (dateStr) => "vfl.log." + dateStr;
+  const loadDay = (dateStr) => {
+    try { return JSON.parse(localStorage.getItem(logKey(dateStr))) || []; }
+    catch { return []; }
+  };
+  const saveDay = (dateStr, entries) =>
+    localStorage.setItem(logKey(dateStr), JSON.stringify(entries));
+
+  // ---------- state ----------
+  let viewedDate = new Date();
+  let busy = false;          // an estimate request is in flight
+  let lastFailedText = null; // for the Retry button
+
+  // ---------- elements ----------
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    prevDay: $("prevDay"), nextDay: $("nextDay"), dayLabel: $("dayLabel"),
+    settingsBtn: $("settingsBtn"), totalCal: $("totalCal"), totalMeta: $("totalMeta"),
+    entries: $("entries"), banner: $("banner"), bannerText: $("bannerText"),
+    bannerBtn: $("bannerBtn"), liveArea: $("liveArea"), liveStatus: $("liveStatus"),
+    liveText: $("liveText"), micBtn: $("micBtn"), typeBtn: $("typeBtn"),
+    typeRow: $("typeRow"), typeInput: $("typeInput"), typeSubmit: $("typeSubmit"),
+    settings: $("settings"), workerUrlInput: $("workerUrlInput"),
+    saveSettings: $("saveSettings"), closeSettings: $("closeSettings"),
+    savedFlash: $("savedFlash"),
+  };
+
+  // ---------- rendering ----------
+  function render() {
+    const dateStr = ymd(viewedDate);
+    const todayStr = ymd(new Date());
+    els.dayLabel.textContent = dateStr === todayStr ? "Today"
+      : viewedDate.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    els.nextDay.disabled = dateStr >= todayStr;
+
+    const entries = loadDay(dateStr);
+    const total = entries.reduce((s, e) => s + (e.total || 0), 0);
+    els.totalCal.textContent = total.toLocaleString() + " cal";
+    els.totalMeta.textContent = entries.length
+      ? entries.length + (entries.length === 1 ? " entry" : " entries")
+      : "no entries yet";
+
+    els.entries.replaceChildren();
+    if (!entries.length) {
+      const empty = document.createElement("div");
+      empty.id = "empty";
+      empty.textContent = dateStr === todayStr
+        ? "Tap the mic and say what you ate." : "Nothing logged this day.";
+      els.entries.appendChild(empty);
+      return;
+    }
+    for (const entry of [...entries].reverse()) {
+      els.entries.appendChild(entryCard(dateStr, entry));
+    }
+  }
+
+  function entryCard(dateStr, entry) {
+    const card = document.createElement("div");
+    card.className = "entry";
+
+    const top = document.createElement("div");
+    top.className = "entry-top";
+    const time = document.createElement("span");
+    time.className = "entry-time";
+    time.textContent = new Date(entry.ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    const total = document.createElement("span");
+    total.className = "entry-total";
+    total.textContent = (entry.total || 0).toLocaleString() + " cal";
+    const del = document.createElement("button");
+    del.className = "entry-del";
+    del.textContent = "✕";
+    del.setAttribute("aria-label", "Delete entry");
+    del.onclick = () => {
+      if (!confirm("Delete this entry?")) return;
+      saveDay(dateStr, loadDay(dateStr).filter((e) => e.id !== entry.id));
+      render();
+    };
+    top.append(time, total, del);
+    card.appendChild(top);
+
+    const text = document.createElement("div");
+    text.className = "entry-text";
+    text.textContent = entry.text;
+    card.appendChild(text);
+
+    if (entry.items && entry.items.length > 1) {
+      const list = document.createElement("div");
+      list.className = "entry-items";
+      for (const it of entry.items) {
+        const row = document.createElement("div");
+        row.className = "entry-item";
+        const name = document.createElement("span");
+        name.textContent = it.quantity ? `${it.quantity} ${it.name}` : it.name;
+        const cal = document.createElement("span");
+        cal.className = "cal";
+        cal.textContent = (it.calories || 0).toLocaleString();
+        row.append(name, cal);
+        list.appendChild(row);
+      }
+      card.appendChild(list);
+    }
+    if (entry.note) {
+      const note = document.createElement("div");
+      note.className = "entry-note";
+      note.textContent = entry.note;
+      card.appendChild(note);
+    }
+    return card;
+  }
+
+  // ---------- banner / live area ----------
+  function showBanner(msg, retryText) {
+    els.bannerText.textContent = msg;
+    lastFailedText = retryText || null;
+    els.bannerBtn.hidden = !retryText;
+    els.banner.hidden = false;
+  }
+  function hideBanner() { els.banner.hidden = true; }
+  function showLive(status, text) {
+    els.liveStatus.textContent = status;
+    els.liveText.textContent = text || "";
+    els.liveArea.hidden = false;
+  }
+  function hideLive() { els.liveArea.hidden = true; }
+
+  // ---------- backend ----------
+  async function submit(text) {
+    text = (text || "").trim();
+    if (!text || busy) return;
+    const workerUrl = (localStorage.getItem(URL_KEY) || "").trim().replace(/\/+$/, "");
+    if (!workerUrl) {
+      openSettings();
+      showBanner("Set your Worker URL first (Settings), then try again.");
+      return;
+    }
+    busy = true;
+    hideBanner();
+    updateMic();
+    showLive("Estimating calories…", "“" + text + "”");
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch(workerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      let data = null;
+      try { data = await res.json(); } catch {}
+      if (!res.ok || !data || typeof data.total_calories !== "number") {
+        throw new Error((data && data.error) || "Backend error (HTTP " + res.status + ")");
+      }
+      const todayStr = ymd(new Date());
+      const entries = loadDay(todayStr);
+      entries.push({
+        id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+        ts: Date.now(),
+        text,
+        items: Array.isArray(data.items) ? data.items : [],
+        total: data.total_calories,
+        note: data.note || "",
+      });
+      saveDay(todayStr, entries);
+      viewedDate = new Date(); // jump back to today to show the new entry
+      hideLive();
+      render();
+    } catch (err) {
+      hideLive();
+      const msg = err.name === "AbortError" ? "Request timed out." : (err.message || "Request failed.");
+      showBanner(msg, text);
+    } finally {
+      busy = false;
+      updateMic();
+    }
+  }
+  els.bannerBtn.onclick = () => { hideBanner(); submit(lastFailedText); };
+
+  // ---------- speech ----------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null;
+  let listening = false;
+  let finalText = "";
+
+  function updateMic() {
+    els.micBtn.disabled = busy || !SR;
+    els.micBtn.classList.toggle("listening", listening);
+    els.micBtn.textContent = listening ? "◼" : "🎤";
+  }
+
+  function startListening() {
+    finalText = "";
+    rec = new SR();
+    rec.lang = navigator.language || "en-US";
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.continuous = false;
+
+    rec.onresult = (ev) => {
+      let interim = "";
+      for (let i = 0; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      showLive("Listening… tap ◼ to finish", (finalText + " " + interim).trim());
+    };
+    rec.onerror = (ev) => {
+      listening = false;
+      updateMic();
+      hideLive();
+      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
+        showBanner("Microphone access was blocked. Allow it in Safari settings, or type instead.");
+      } else if (ev.error !== "aborted" && ev.error !== "no-speech") {
+        showBanner("Speech recognition error (" + ev.error + "). You can type instead.");
+      }
+    };
+    rec.onend = () => {
+      listening = false;
+      updateMic();
+      const text = finalText.trim();
+      if (text) submit(text);
+      else hideLive();
+    };
+
+    listening = true;
+    hideBanner();
+    updateMic();
+    showLive("Listening…", "");
+    try { rec.start(); }
+    catch { listening = false; updateMic(); hideLive(); }
+  }
+
+  els.micBtn.onclick = () => {
+    if (busy) return;
+    if (listening) rec.stop();
+    else startListening();
+  };
+
+  if (!SR) {
+    showBanner("Speech recognition isn't available in this browser — use the keyboard button instead.");
+    els.typeRow.hidden = false;
+  }
+
+  // ---------- typed entry ----------
+  els.typeBtn.onclick = () => {
+    els.typeRow.hidden = !els.typeRow.hidden;
+    if (!els.typeRow.hidden) els.typeInput.focus();
+  };
+  els.typeSubmit.onclick = () => {
+    const v = els.typeInput.value;
+    els.typeInput.value = "";
+    els.typeRow.hidden = true;
+    submit(v);
+  };
+  els.typeInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") els.typeSubmit.onclick();
+  });
+
+  // ---------- day navigation ----------
+  els.prevDay.onclick = () => { viewedDate.setDate(viewedDate.getDate() - 1); render(); };
+  els.nextDay.onclick = () => { viewedDate.setDate(viewedDate.getDate() + 1); render(); };
+
+  // ---------- settings ----------
+  function openSettings() {
+    els.workerUrlInput.value = localStorage.getItem(URL_KEY) || "";
+    els.savedFlash.hidden = true;
+    els.settings.hidden = false;
+  }
+  els.settingsBtn.onclick = openSettings;
+  els.closeSettings.onclick = () => { els.settings.hidden = true; };
+  els.saveSettings.onclick = () => {
+    let url = els.workerUrlInput.value.trim();
+    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+    localStorage.setItem(URL_KEY, url);
+    els.workerUrlInput.value = url;
+    els.savedFlash.hidden = false;
+  };
+
+  // first-run: open settings if no backend configured yet
+  if (!localStorage.getItem(URL_KEY)) openSettings();
+
+  render();
+})();
+</script>
+</body>
+</html>

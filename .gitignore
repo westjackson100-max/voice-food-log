@@ -1,0 +1,5 @@
+# Backend + tooling stay out of the public Pages repo
+worker.js
+wrangler.jsonc
+node_modules/
+.wrangler/
