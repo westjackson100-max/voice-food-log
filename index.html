@@ -12,12 +12,16 @@
 <style>
   :root {
     --bg: #f5f6f8; --card: #ffffff; --text: #16202b; --muted: #66707c;
-    --accent: #e05a3a; --accent-press: #c44a2d; --line: #e3e6ea; --ok: #2e7d4f;
+    --accent: #e05a3a; --accent-press: #c44a2d; --line: #e3e6ea;
+    --ok: #2e7d4f; --over: #c0392b; --track: #e8ebef;
+    --p: #4a7fd4; --c: #d9a233; --f: #8a63c9;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #10151c; --card: #1a212b; --text: #edf0f3; --muted: #8b95a1;
-      --accent: #e05a3a; --accent-press: #c44a2d; --line: #29323e; --ok: #57b87f;
+      --accent: #e05a3a; --accent-press: #c44a2d; --line: #29323e;
+      --ok: #57b87f; --over: #e2685a; --track: #29323e;
+      --p: #6f9de8; --c: #e3b455; --f: #a785e0;
     }
   }
   * { box-sizing: border-box; margin: 0; }
@@ -29,23 +33,47 @@
     padding-top: env(safe-area-inset-top);
     -webkit-tap-highlight-color: transparent;
   }
-  header {
-    display: flex; align-items: center; gap: 4px;
-    padding: 10px 12px 8px;
-  }
+  button { font-family: inherit; }
+  header { display: flex; align-items: center; gap: 4px; padding: 8px 12px 6px; }
   header .navbtn, header #settingsBtn {
     background: none; border: none; color: var(--text); font-size: 22px;
     width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
   }
   header .navbtn:disabled { color: var(--line); }
   #dayLabel { flex: 1; text-align: center; font-size: 17px; font-weight: 650; }
-  #totalBar {
-    margin: 0 16px 10px; padding: 12px 16px; border-radius: 14px;
+
+  /* ---- daily summary ---- */
+  #summary {
+    margin: 0 16px 12px; padding: 14px 16px; border-radius: 16px;
     background: var(--card); border: 1px solid var(--line);
-    display: flex; justify-content: space-between; align-items: baseline;
   }
-  #totalCal { font-size: 26px; font-weight: 750; }
-  #totalMeta { color: var(--muted); font-size: 13px; }
+  .sumRow { display: flex; align-items: baseline; gap: 8px; }
+  #eaten { font-size: 30px; font-weight: 760; line-height: 1; }
+  #goalOf { color: var(--muted); font-size: 14px; }
+  #remaining { margin-left: auto; font-size: 14px; font-weight: 650; color: var(--ok); }
+  #remaining.over { color: var(--over); }
+  #barTrack {
+    height: 8px; border-radius: 5px; background: var(--track);
+    margin-top: 10px; overflow: hidden;
+  }
+  #barFill { height: 100%; width: 0; background: var(--accent); border-radius: 5px; transition: width .35s ease; }
+  #barFill.over { background: var(--over); }
+  #macros { display: flex; gap: 8px; margin-top: 12px; }
+  .macro {
+    flex: 1; background: var(--bg); border-radius: 11px; padding: 8px 6px; text-align: center;
+  }
+  .macro .lbl { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .macro .val { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .macro.p .val { color: var(--p); } .macro.c .val { color: var(--c); } .macro.f .val { color: var(--f); }
+  #setupPrompt {
+    margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center;
+  }
+  #setupPrompt button {
+    background: none; border: none; color: var(--accent); font-size: 13px;
+    text-decoration: underline; cursor: pointer; padding: 0;
+  }
+
+  /* ---- entries ---- */
   main { flex: 1; overflow-y: auto; padding: 0 16px 190px; }
   .entry {
     background: var(--card); border: 1px solid var(--line); border-radius: 14px;
@@ -59,11 +87,16 @@
     padding: 0 0 0 8px; cursor: pointer;
   }
   .entry-text { font-size: 15px; margin-top: 4px; }
-  .entry-items { margin-top: 6px; border-top: 1px dashed var(--line); padding-top: 6px; }
+  .entry-macros { font-size: 12.5px; color: var(--muted); margin-top: 5px; }
+  .entry-macros b { font-weight: 650; }
+  .entry-macros .mp { color: var(--p); } .entry-macros .mc { color: var(--c); } .entry-macros .mf { color: var(--f); }
+  .entry-items { margin-top: 7px; border-top: 1px dashed var(--line); padding-top: 6px; }
   .entry-item { display: flex; font-size: 13px; color: var(--muted); gap: 6px; }
   .entry-item .cal { margin-left: auto; }
   .entry-note { margin-top: 5px; font-size: 12px; color: var(--muted); font-style: italic; }
-  #empty { text-align: center; color: var(--muted); margin-top: 48px; font-size: 14px; line-height: 1.6; }
+  #empty { text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px; line-height: 1.6; }
+
+  /* ---- transient UI ---- */
   #banner {
     position: fixed; left: 16px; right: 16px; bottom: calc(150px + env(safe-area-inset-bottom));
     background: #b3372b; color: #fff; padding: 10px 14px; border-radius: 12px;
@@ -79,6 +112,7 @@
     padding: 10px 14px; font-size: 15px; z-index: 4;
   }
   #liveStatus { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
+
   footer {
     position: fixed; left: 0; right: 0; bottom: 0;
     padding: 14px 24px calc(18px + env(safe-area-inset-bottom));
@@ -113,24 +147,49 @@
     border: none; border-radius: 12px; background: var(--accent); color: #fff;
     padding: 0 16px; font-size: 15px; cursor: pointer;
   }
-  #settings {
+
+  /* ---- panels (settings + onboarding) ---- */
+  .panel {
     position: fixed; inset: 0; background: var(--bg); z-index: 10;
-    padding: calc(16px + env(safe-area-inset-top)) 20px 20px;
+    padding: calc(18px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom));
+    overflow-y: auto;
   }
-  #settings h2 { font-size: 20px; margin-bottom: 16px; }
-  #settings label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-  #settings input {
+  .panel h2 { font-size: 21px; margin-bottom: 4px; }
+  .panel .sub { color: var(--muted); font-size: 13.5px; line-height: 1.5; margin-bottom: 18px; }
+  .panel label { display: block; font-size: 13px; color: var(--muted); margin: 16px 0 6px; }
+  .panel input[type=text], .panel input[type=url], .panel input[type=number] {
     width: 100%; padding: 13px; border-radius: 12px; border: 1px solid var(--line);
-    background: var(--card); color: var(--text); font-size: 15px;
+    background: var(--card); color: var(--text); font-size: 16px;
   }
-  #settings .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
-  #settings .row { display: flex; gap: 10px; margin-top: 18px; }
-  #settings .row button {
-    flex: 1; padding: 13px; border-radius: 12px; border: none; font-size: 15px; cursor: pointer;
+  .weightRow { display: flex; gap: 8px; }
+  .weightRow input { flex: 1; }
+  .unitToggle { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .unitToggle button {
+    border: none; background: var(--card); color: var(--muted);
+    padding: 0 16px; font-size: 15px; cursor: pointer;
   }
-  #saveSettings { background: var(--accent); color: #fff; }
-  #closeSettings { background: var(--card); color: var(--text); border: 1px solid var(--line) !important; }
-  .saved-flash { color: var(--ok); font-size: 13px; margin-top: 10px; }
+  .unitToggle button.on { background: var(--accent); color: #fff; }
+  .choices { display: flex; flex-direction: column; gap: 8px; }
+  .choice {
+    text-align: left; width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    font-size: 15px; cursor: pointer;
+  }
+  .choice.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .choice .cdesc { display: block; font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .choice .cnum { float: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13.5px; }
+  #maintBox {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 16px; margin-top: 18px; text-align: center;
+  }
+  #maintBox .big { font-size: 27px; font-weight: 750; }
+  #maintBox .cap { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+  .row { display: flex; gap: 10px; margin-top: 22px; }
+  .row button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-size: 15px; cursor: pointer; }
+  .primary { background: var(--accent); color: #fff; }
+  .secondary { background: var(--card); color: var(--text); border: 1px solid var(--line) !important; }
+  .flash { color: var(--ok); font-size: 13px; margin-top: 12px; text-align: center; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -143,9 +202,21 @@
   <button id="settingsBtn" aria-label="Settings">⚙︎</button>
 </header>
 
-<div id="totalBar">
-  <span id="totalCal">0 cal</span>
-  <span id="totalMeta">no entries yet</span>
+<div id="summary">
+  <div class="sumRow">
+    <span id="eaten">0</span>
+    <span id="goalOf">cal</span>
+    <span id="remaining"></span>
+  </div>
+  <div id="barTrack" hidden><div id="barFill"></div></div>
+  <div id="macros">
+    <div class="macro p"><div class="lbl">Protein</div><div class="val" id="mP">0g</div></div>
+    <div class="macro c"><div class="lbl">Carbs</div><div class="val" id="mC">0g</div></div>
+    <div class="macro f"><div class="lbl">Fat</div><div class="val" id="mF">0g</div></div>
+  </div>
+  <div id="setupPrompt" hidden>
+    No calorie target yet — <button id="setupLink">set your goal</button>
+  </div>
 </div>
 
 <main id="entries"></main>
@@ -161,86 +232,223 @@
 
 <footer>
   <button id="typeBtn" aria-label="Type instead">⌨</button>
-  <button id="micBtn" aria-label="Hold to speak">🎤</button>
+  <button id="micBtn" aria-label="Tap to speak">🎤</button>
 </footer>
 
-<section id="settings" hidden>
-  <h2>Settings</h2>
-  <label for="workerUrlInput">Worker URL (calorie backend)</label>
-  <input id="workerUrlInput" type="url" placeholder="https://food-log.yourname.workers.dev"
-         autocapitalize="off" autocorrect="off" spellcheck="false">
-  <p class="hint">Paste the Cloudflare Worker URL here. Spoken text is sent to this backend for
-     calorie estimation. Entries are stored only on this device.</p>
-  <div class="row">
-    <button id="closeSettings">Close</button>
-    <button id="saveSettings">Save</button>
+<!-- ============ onboarding ============ -->
+<section id="onboard" class="panel" hidden>
+  <!-- step 1 -->
+  <div id="ob1">
+    <h2>Let's set your target</h2>
+    <p class="sub">Two quick questions and the app will work out roughly how many calories
+       you burn in a day.</p>
+
+    <label for="obWeight">1. What do you weigh?</label>
+    <div class="weightRow">
+      <input id="obWeight" type="number" inputmode="decimal" min="50" max="700" placeholder="180">
+      <div class="unitToggle">
+        <button type="button" id="obUnitLb" class="on">lb</button>
+        <button type="button" id="obUnitKg">kg</button>
+      </div>
+    </div>
+
+    <label>2. How active are you?</label>
+    <div class="choices" id="obActivity"></div>
+
+    <div class="row">
+      <button class="primary" id="obNext">Continue</button>
+    </div>
+    <p class="hint" id="obErr" style="color:var(--over)" hidden></p>
   </div>
-  <p class="saved-flash" id="savedFlash" hidden>Saved ✓</p>
+
+  <!-- step 2 -->
+  <div id="ob2" hidden>
+    <h2>Your daily target</h2>
+    <p class="sub">This is an estimate to start from. Weigh yourself over a couple of weeks
+       and nudge it if the trend isn't going the way you want.</p>
+
+    <div id="maintBox">
+      <div class="big" id="obMaint">— cal</div>
+      <div class="cap">estimated maintenance — what you burn in a day</div>
+    </div>
+
+    <label>Goal</label>
+    <div class="choices" id="obGoals"></div>
+
+    <label for="obCustom">Or set an exact number</label>
+    <input id="obCustom" type="number" inputmode="numeric" min="800" max="8000" placeholder="e.g. 2400">
+
+    <label for="obWorkerUrl">Worker URL (calorie backend)</label>
+    <input id="obWorkerUrl" type="url" placeholder="https://food-log.example.workers.dev"
+           autocapitalize="off" autocorrect="off" spellcheck="false">
+    <p class="hint">Already filled in if you've set it before. Spoken food descriptions are sent
+       here for estimation; your log stays on this device.</p>
+
+    <div class="row">
+      <button class="secondary" id="obBack">Back</button>
+      <button class="primary" id="obDone">Start logging</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ settings ============ -->
+<section id="settings" class="panel" hidden>
+  <h2>Settings</h2>
+  <p class="sub">Changing your weight or activity recalculates maintenance, and your goal
+     moves with it unless you've set an exact number.</p>
+
+  <label for="setWeight">Bodyweight</label>
+  <div class="weightRow">
+    <input id="setWeight" type="number" inputmode="decimal" min="50" max="700">
+    <div class="unitToggle">
+      <button type="button" id="setUnitLb">lb</button>
+      <button type="button" id="setUnitKg">kg</button>
+    </div>
+  </div>
+
+  <label>Activity level</label>
+  <div class="choices" id="setActivity"></div>
+
+  <div id="setMaintBox" style="margin-top:16px" class="hint"></div>
+
+  <label>Goal</label>
+  <div class="choices" id="setGoals"></div>
+
+  <label for="setCustom">Exact calorie target (overrides the preset)</label>
+  <input id="setCustom" type="number" inputmode="numeric" min="800" max="8000" placeholder="leave blank to use preset">
+
+  <label for="setWorkerUrl">Worker URL (calorie backend)</label>
+  <input id="setWorkerUrl" type="url" autocapitalize="off" autocorrect="off" spellcheck="false">
+
+  <div class="row">
+    <button class="secondary" id="closeSettings">Close</button>
+    <button class="primary" id="saveSettings">Save</button>
+  </div>
+  <p class="flash" id="savedFlash" hidden>Saved ✓</p>
 </section>
 
 <script>
 (() => {
   "use strict";
 
-  // ---------- storage ----------
+  // ================= constants =================
   const URL_KEY = "vfl.workerUrl";
+  const PROFILE_KEY = "vfl.profile";
+
+  // Calories burned per pound of bodyweight per day. A widely used quick
+  // estimate; less precise than a lab test but fine as a starting point.
+  const ACTIVITY = [
+    { key: "sedentary", label: "Sedentary",          desc: "Desk job, little or no exercise",   mult: 13 },
+    { key: "light",     label: "Lightly active",     desc: "Light exercise 1–3 days a week",    mult: 15 },
+    { key: "moderate",  label: "Moderately active",  desc: "Exercise 3–5 days a week",          mult: 16.5 },
+    { key: "very",      label: "Very active",        desc: "Hard exercise 6–7 days a week",     mult: 18 },
+    { key: "extreme",   label: "Extremely active",   desc: "Physical job plus regular training", mult: 20 },
+  ];
+
+  const GOALS = [
+    { key: "cut2",     label: "Aggressive cut", delta: -750, hint: "≈1.5 lb/week down" },
+    { key: "cut1",     label: "Cut",            delta: -500, hint: "≈1 lb/week down" },
+    { key: "cut0",     label: "Slow cut",       delta: -250, hint: "≈0.5 lb/week down" },
+    { key: "maintain", label: "Maintain",       delta: 0,    hint: "hold your weight" },
+    { key: "bulk0",    label: "Lean bulk",      delta: 250,  hint: "≈0.5 lb/week up" },
+    { key: "bulk1",    label: "Bulk",           delta: 500,  hint: "≈1 lb/week up" },
+  ];
+
+  // ================= storage =================
   const ymd = (d) => [d.getFullYear(),
     String(d.getMonth() + 1).padStart(2, "0"),
     String(d.getDate()).padStart(2, "0")].join("-");
-  const logKey = (dateStr) => "vfl.log." + dateStr;
-  const loadDay = (dateStr) => {
-    try { return JSON.parse(localStorage.getItem(logKey(dateStr))) || []; }
-    catch { return []; }
+  const logKey = (s) => "vfl.log." + s;
+  const loadDay = (s) => {
+    try { return JSON.parse(localStorage.getItem(logKey(s))) || []; } catch { return []; }
   };
-  const saveDay = (dateStr, entries) =>
-    localStorage.setItem(logKey(dateStr), JSON.stringify(entries));
+  const saveDay = (s, e) => localStorage.setItem(logKey(s), JSON.stringify(e));
 
-  // ---------- state ----------
+  const loadProfile = () => {
+    try { return JSON.parse(localStorage.getItem(PROFILE_KEY)); } catch { return null; }
+  };
+  const saveProfile = (p) => localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+
+  // ================= calculations =================
+  const toLb = (weight, unit) => (unit === "kg" ? weight * 2.20462 : weight);
+
+  function maintenanceFor(weight, unit, activityKey) {
+    const act = ACTIVITY.find((a) => a.key === activityKey) || ACTIVITY[2];
+    return Math.round(toLb(Number(weight) || 0, unit) * act.mult);
+  }
+  // Goal = custom number when set, otherwise maintenance + the preset's delta.
+  function goalFor(profile) {
+    if (!profile) return null;
+    if (profile.custom) return profile.custom;
+    const g = GOALS.find((x) => x.key === profile.goalKey) || GOALS[3];
+    return Math.max(800, profile.maintenance + g.delta);
+  }
+
+  // ================= state =================
   let viewedDate = new Date();
-  let busy = false;          // an estimate request is in flight
-  let lastFailedText = null; // for the Retry button
+  let busy = false;
+  let lastFailedText = null;
+  let draft = { weight: "", unit: "lb", activity: "moderate", goalKey: "maintain", custom: null };
 
-  // ---------- elements ----------
   const $ = (id) => document.getElementById(id);
-  const els = {
-    prevDay: $("prevDay"), nextDay: $("nextDay"), dayLabel: $("dayLabel"),
-    settingsBtn: $("settingsBtn"), totalCal: $("totalCal"), totalMeta: $("totalMeta"),
-    entries: $("entries"), banner: $("banner"), bannerText: $("bannerText"),
-    bannerBtn: $("bannerBtn"), liveArea: $("liveArea"), liveStatus: $("liveStatus"),
-    liveText: $("liveText"), micBtn: $("micBtn"), typeBtn: $("typeBtn"),
-    typeRow: $("typeRow"), typeInput: $("typeInput"), typeSubmit: $("typeSubmit"),
-    settings: $("settings"), workerUrlInput: $("workerUrlInput"),
-    saveSettings: $("saveSettings"), closeSettings: $("closeSettings"),
-    savedFlash: $("savedFlash"),
-  };
 
-  // ---------- rendering ----------
+  // ================= main screen =================
   function render() {
     const dateStr = ymd(viewedDate);
     const todayStr = ymd(new Date());
-    els.dayLabel.textContent = dateStr === todayStr ? "Today"
+    $("dayLabel").textContent = dateStr === todayStr ? "Today"
       : viewedDate.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-    els.nextDay.disabled = dateStr >= todayStr;
+    $("nextDay").disabled = dateStr >= todayStr;
 
     const entries = loadDay(dateStr);
-    const total = entries.reduce((s, e) => s + (e.total || 0), 0);
-    els.totalCal.textContent = total.toLocaleString() + " cal";
-    els.totalMeta.textContent = entries.length
-      ? entries.length + (entries.length === 1 ? " entry" : " entries")
-      : "no entries yet";
+    const tally = entries.reduce((t, e) => ({
+      cal: t.cal + (e.total || 0),
+      p: t.p + (e.protein || 0),
+      c: t.c + (e.carbs || 0),
+      f: t.f + (e.fat || 0),
+    }), { cal: 0, p: 0, c: 0, f: 0 });
 
-    els.entries.replaceChildren();
+    const profile = loadProfile();
+    const goal = goalFor(profile);
+
+    $("eaten").textContent = tally.cal.toLocaleString();
+    if (goal) {
+      $("goalOf").textContent = "of " + goal.toLocaleString() + " cal";
+      const left = goal - tally.cal;
+      const rem = $("remaining");
+      rem.textContent = left >= 0
+        ? left.toLocaleString() + " left"
+        : Math.abs(left).toLocaleString() + " over";
+      rem.classList.toggle("over", left < 0);
+      $("barTrack").hidden = false;
+      const pct = Math.min(100, Math.round((tally.cal / goal) * 100));
+      $("barFill").style.width = pct + "%";
+      $("barFill").classList.toggle("over", tally.cal > goal);
+      $("setupPrompt").hidden = true;
+    } else {
+      $("goalOf").textContent = "cal";
+      $("remaining").textContent = entries.length
+        ? entries.length + (entries.length === 1 ? " entry" : " entries") : "";
+      $("remaining").classList.remove("over");
+      $("barTrack").hidden = true;
+      $("setupPrompt").hidden = false;
+    }
+
+    $("mP").textContent = Math.round(tally.p) + "g";
+    $("mC").textContent = Math.round(tally.c) + "g";
+    $("mF").textContent = Math.round(tally.f) + "g";
+
+    const list = $("entries");
+    list.replaceChildren();
     if (!entries.length) {
       const empty = document.createElement("div");
       empty.id = "empty";
       empty.textContent = dateStr === todayStr
         ? "Tap the mic and say what you ate." : "Nothing logged this day.";
-      els.entries.appendChild(empty);
+      list.appendChild(empty);
       return;
     }
-    for (const entry of [...entries].reverse()) {
-      els.entries.appendChild(entryCard(dateStr, entry));
-    }
+    for (const entry of [...entries].reverse()) list.appendChild(entryCard(dateStr, entry));
   }
 
   function entryCard(dateStr, entry) {
@@ -272,9 +480,26 @@
     text.textContent = entry.text;
     card.appendChild(text);
 
+    if (entry.protein != null || entry.carbs != null || entry.fat != null) {
+      const m = document.createElement("div");
+      m.className = "entry-macros";
+      const mk = (cls, label, val) => {
+        const s = document.createElement("span");
+        s.className = cls;
+        const b = document.createElement("b");
+        b.textContent = Math.round(val || 0) + "g";
+        s.append(label + " ", b);
+        return s;
+      };
+      m.append(mk("mp", "P", entry.protein), document.createTextNode("  ·  "),
+               mk("mc", "C", entry.carbs),   document.createTextNode("  ·  "),
+               mk("mf", "F", entry.fat));
+      card.appendChild(m);
+    }
+
     if (entry.items && entry.items.length > 1) {
-      const list = document.createElement("div");
-      list.className = "entry-items";
+      const wrap = document.createElement("div");
+      wrap.className = "entry-items";
       for (const it of entry.items) {
         const row = document.createElement("div");
         row.className = "entry-item";
@@ -284,9 +509,9 @@
         cal.className = "cal";
         cal.textContent = (it.calories || 0).toLocaleString();
         row.append(name, cal);
-        list.appendChild(row);
+        wrap.appendChild(row);
       }
-      card.appendChild(list);
+      card.appendChild(wrap);
     }
     if (entry.note) {
       const note = document.createElement("div");
@@ -297,22 +522,22 @@
     return card;
   }
 
-  // ---------- banner / live area ----------
+  // ================= banner / live =================
   function showBanner(msg, retryText) {
-    els.bannerText.textContent = msg;
+    $("bannerText").textContent = msg;
     lastFailedText = retryText || null;
-    els.bannerBtn.hidden = !retryText;
-    els.banner.hidden = false;
+    $("bannerBtn").hidden = !retryText;
+    $("banner").hidden = false;
   }
-  function hideBanner() { els.banner.hidden = true; }
+  const hideBanner = () => { $("banner").hidden = true; };
   function showLive(status, text) {
-    els.liveStatus.textContent = status;
-    els.liveText.textContent = text || "";
-    els.liveArea.hidden = false;
+    $("liveStatus").textContent = status;
+    $("liveText").textContent = text || "";
+    $("liveArea").hidden = false;
   }
-  function hideLive() { els.liveArea.hidden = true; }
+  const hideLive = () => { $("liveArea").hidden = true; };
 
-  // ---------- backend ----------
+  // ================= backend =================
   async function submit(text) {
     text = (text || "").trim();
     if (!text || busy) return;
@@ -322,9 +547,7 @@
       showBanner("Set your Worker URL first (Settings), then try again.");
       return;
     }
-    busy = true;
-    hideBanner();
-    updateMic();
+    busy = true; hideBanner(); updateMic();
     showLive("Estimating calories…", "“" + text + "”");
     try {
       const controller = new AbortController();
@@ -349,33 +572,32 @@
         text,
         items: Array.isArray(data.items) ? data.items : [],
         total: data.total_calories,
+        protein: data.total_protein_g ?? null,
+        carbs: data.total_carbs_g ?? null,
+        fat: data.total_fat_g ?? null,
         note: data.note || "",
       });
       saveDay(todayStr, entries);
-      viewedDate = new Date(); // jump back to today to show the new entry
-      hideLive();
-      render();
+      viewedDate = new Date();
+      hideLive(); render();
     } catch (err) {
       hideLive();
-      const msg = err.name === "AbortError" ? "Request timed out." : (err.message || "Request failed.");
-      showBanner(msg, text);
+      showBanner(err.name === "AbortError" ? "Request timed out."
+                                           : (err.message || "Request failed."), text);
     } finally {
-      busy = false;
-      updateMic();
+      busy = false; updateMic();
     }
   }
-  els.bannerBtn.onclick = () => { hideBanner(); submit(lastFailedText); };
+  $("bannerBtn").onclick = () => { hideBanner(); submit(lastFailedText); };
 
-  // ---------- speech ----------
+  // ================= speech =================
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let rec = null;
-  let listening = false;
-  let finalText = "";
+  let rec = null, listening = false, finalText = "";
 
   function updateMic() {
-    els.micBtn.disabled = busy || !SR;
-    els.micBtn.classList.toggle("listening", listening);
-    els.micBtn.textContent = listening ? "◼" : "🎤";
+    $("micBtn").disabled = busy || !SR;
+    $("micBtn").classList.toggle("listening", listening);
+    $("micBtn").textContent = listening ? "◼" : "🎤";
   }
 
   function startListening() {
@@ -385,20 +607,16 @@
     rec.interimResults = true;
     rec.maxAlternatives = 1;
     rec.continuous = false;
-
     rec.onresult = (ev) => {
       let interim = "";
       for (let i = 0; i < ev.results.length; i++) {
         const r = ev.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interim += r[0].transcript;
+        if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
       }
       showLive("Listening… tap ◼ to finish", (finalText + " " + interim).trim());
     };
     rec.onerror = (ev) => {
-      listening = false;
-      updateMic();
-      hideLive();
+      listening = false; updateMic(); hideLive();
       if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
         showBanner("Microphone access was blocked. Allow it in Safari settings, or type instead.");
       } else if (ev.error !== "aborted" && ev.error !== "no-speech") {
@@ -406,70 +624,207 @@
       }
     };
     rec.onend = () => {
-      listening = false;
-      updateMic();
-      const text = finalText.trim();
-      if (text) submit(text);
-      else hideLive();
+      listening = false; updateMic();
+      const t = finalText.trim();
+      if (t) submit(t); else hideLive();
     };
-
-    listening = true;
-    hideBanner();
-    updateMic();
-    showLive("Listening…", "");
-    try { rec.start(); }
-    catch { listening = false; updateMic(); hideLive(); }
+    listening = true; hideBanner(); updateMic(); showLive("Listening…", "");
+    try { rec.start(); } catch { listening = false; updateMic(); hideLive(); }
   }
 
-  els.micBtn.onclick = () => {
+  $("micBtn").onclick = () => {
     if (busy) return;
-    if (listening) rec.stop();
-    else startListening();
+    if (listening) rec.stop(); else startListening();
   };
-
   if (!SR) {
     showBanner("Speech recognition isn't available in this browser — use the keyboard button instead.");
-    els.typeRow.hidden = false;
+    $("typeRow").hidden = false;
   }
 
-  // ---------- typed entry ----------
-  els.typeBtn.onclick = () => {
-    els.typeRow.hidden = !els.typeRow.hidden;
-    if (!els.typeRow.hidden) els.typeInput.focus();
+  // ================= typed entry =================
+  $("typeBtn").onclick = () => {
+    $("typeRow").hidden = !$("typeRow").hidden;
+    if (!$("typeRow").hidden) $("typeInput").focus();
   };
-  els.typeSubmit.onclick = () => {
-    const v = els.typeInput.value;
-    els.typeInput.value = "";
-    els.typeRow.hidden = true;
+  $("typeSubmit").onclick = () => {
+    const v = $("typeInput").value;
+    $("typeInput").value = "";
+    $("typeRow").hidden = true;
     submit(v);
   };
-  els.typeInput.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") els.typeSubmit.onclick();
-  });
+  $("typeInput").addEventListener("keydown", (e) => { if (e.key === "Enter") $("typeSubmit").onclick(); });
 
-  // ---------- day navigation ----------
-  els.prevDay.onclick = () => { viewedDate.setDate(viewedDate.getDate() - 1); render(); };
-  els.nextDay.onclick = () => { viewedDate.setDate(viewedDate.getDate() + 1); render(); };
+  // ================= day nav =================
+  $("prevDay").onclick = () => { viewedDate.setDate(viewedDate.getDate() - 1); render(); };
+  $("nextDay").onclick = () => { viewedDate.setDate(viewedDate.getDate() + 1); render(); };
 
-  // ---------- settings ----------
-  function openSettings() {
-    els.workerUrlInput.value = localStorage.getItem(URL_KEY) || "";
-    els.savedFlash.hidden = true;
-    els.settings.hidden = false;
+  // ================= choice-list builders =================
+  function buildActivity(container, selectedKey, onPick) {
+    container.replaceChildren();
+    for (const a of ACTIVITY) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "choice" + (a.key === selectedKey ? " on" : "");
+      b.appendChild(document.createTextNode(a.label));
+      const d = document.createElement("span");
+      d.className = "cdesc";
+      d.textContent = a.desc;
+      b.appendChild(d);
+      b.onclick = () => onPick(a.key);
+      container.appendChild(b);
+    }
   }
-  els.settingsBtn.onclick = openSettings;
-  els.closeSettings.onclick = () => { els.settings.hidden = true; };
-  els.saveSettings.onclick = () => {
-    let url = els.workerUrlInput.value.trim();
+
+  function buildGoals(container, maintenance, selectedKey, hasCustom, onPick) {
+    container.replaceChildren();
+    for (const g of GOALS) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "choice" + (!hasCustom && g.key === selectedKey ? " on" : "");
+      const num = document.createElement("span");
+      num.className = "cnum";
+      num.textContent = maintenance
+        ? Math.max(800, maintenance + g.delta).toLocaleString() + " cal" : "";
+      b.appendChild(num);
+      b.appendChild(document.createTextNode(g.label));
+      const d = document.createElement("span");
+      d.className = "cdesc";
+      d.textContent = g.hint;
+      b.appendChild(d);
+      b.onclick = () => onPick(g.key);
+      container.appendChild(b);
+    }
+  }
+
+  function setUnitButtons(lbBtn, kgBtn, unit) {
+    lbBtn.classList.toggle("on", unit === "lb");
+    kgBtn.classList.toggle("on", unit === "kg");
+  }
+
+  // ================= onboarding =================
+  function openOnboarding() {
+    const p = loadProfile();
+    draft = p
+      ? { weight: p.weight, unit: p.unit, activity: p.activity, goalKey: p.goalKey, custom: p.custom }
+      : { weight: "", unit: "lb", activity: "moderate", goalKey: "maintain", custom: null };
+    $("obWeight").value = draft.weight || "";
+    setUnitButtons($("obUnitLb"), $("obUnitKg"), draft.unit);
+    renderObActivity();
+    $("obWorkerUrl").value = localStorage.getItem(URL_KEY) || "";
+    $("obErr").hidden = true;
+    $("ob1").hidden = false;
+    $("ob2").hidden = true;
+    $("onboard").hidden = false;
+  }
+  function renderObActivity() {
+    buildActivity($("obActivity"), draft.activity, (k) => { draft.activity = k; renderObActivity(); });
+  }
+
+  $("obUnitLb").onclick = () => { draft.unit = "lb"; setUnitButtons($("obUnitLb"), $("obUnitKg"), "lb"); };
+  $("obUnitKg").onclick = () => { draft.unit = "kg"; setUnitButtons($("obUnitLb"), $("obUnitKg"), "kg"); };
+
+  $("obNext").onclick = () => {
+    const w = parseFloat($("obWeight").value);
+    const maxW = draft.unit === "kg" ? 320 : 700;
+    const minW = draft.unit === "kg" ? 25 : 50;
+    if (!w || w < minW || w > maxW) {
+      $("obErr").textContent = "Enter a weight in " + draft.unit + " (between " + minW + " and " + maxW + ").";
+      $("obErr").hidden = false;
+      return;
+    }
+    draft.weight = w;
+    const maint = maintenanceFor(w, draft.unit, draft.activity);
+    $("obMaint").textContent = maint.toLocaleString() + " cal";
+    renderObGoals(maint);
+    $("obCustom").value = draft.custom || "";
+    $("ob1").hidden = true;
+    $("ob2").hidden = false;
+    $("onboard").scrollTop = 0;
+  };
+  function renderObGoals(maint) {
+    buildGoals($("obGoals"), maint, draft.goalKey, !!draft.custom, (k) => {
+      draft.goalKey = k;
+      draft.custom = null;
+      $("obCustom").value = "";
+      renderObGoals(maint);
+    });
+  }
+  $("obCustom").addEventListener("input", () => {
+    const v = parseInt($("obCustom").value, 10);
+    draft.custom = v > 0 ? v : null;
+    renderObGoals(maintenanceFor(draft.weight, draft.unit, draft.activity));
+  });
+  $("obBack").onclick = () => { $("ob2").hidden = true; $("ob1").hidden = false; };
+  $("obDone").onclick = () => {
+    let url = $("obWorkerUrl").value.trim();
     if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
     localStorage.setItem(URL_KEY, url);
-    els.workerUrlInput.value = url;
-    els.savedFlash.hidden = false;
+    saveProfile({
+      weight: draft.weight, unit: draft.unit, activity: draft.activity,
+      maintenance: maintenanceFor(draft.weight, draft.unit, draft.activity),
+      goalKey: draft.goalKey, custom: draft.custom, updatedAt: Date.now(),
+    });
+    $("onboard").hidden = true;
+    render();
+  };
+  $("setupLink").onclick = openOnboarding;
+
+  // ================= settings =================
+  function openSettings() {
+    const p = loadProfile();
+    draft = p
+      ? { weight: p.weight, unit: p.unit, activity: p.activity, goalKey: p.goalKey, custom: p.custom }
+      : { weight: "", unit: "lb", activity: "moderate", goalKey: "maintain", custom: null };
+    $("setWeight").value = draft.weight || "";
+    setUnitButtons($("setUnitLb"), $("setUnitKg"), draft.unit);
+    $("setCustom").value = draft.custom || "";
+    $("setWorkerUrl").value = localStorage.getItem(URL_KEY) || "";
+    refreshSettings();
+    $("savedFlash").hidden = true;
+    $("settings").hidden = false;
+  }
+  function refreshSettings() {
+    const w = parseFloat($("setWeight").value) || draft.weight || 0;
+    draft.weight = w;
+    const maint = maintenanceFor(w, draft.unit, draft.activity);
+    $("setMaintBox").textContent = w
+      ? "Estimated maintenance: " + maint.toLocaleString() + " cal/day"
+      : "Enter your weight to estimate maintenance.";
+    buildActivity($("setActivity"), draft.activity, (k) => { draft.activity = k; refreshSettings(); });
+    buildGoals($("setGoals"), maint, draft.goalKey, !!draft.custom, (k) => {
+      draft.goalKey = k; draft.custom = null; $("setCustom").value = ""; refreshSettings();
+    });
+  }
+  $("setWeight").addEventListener("input", refreshSettings);
+  $("setCustom").addEventListener("input", () => {
+    const v = parseInt($("setCustom").value, 10);
+    draft.custom = v > 0 ? v : null;
+    refreshSettings();
+  });
+  $("setUnitLb").onclick = () => { draft.unit = "lb"; setUnitButtons($("setUnitLb"), $("setUnitKg"), "lb"); refreshSettings(); };
+  $("setUnitKg").onclick = () => { draft.unit = "kg"; setUnitButtons($("setUnitLb"), $("setUnitKg"), "kg"); refreshSettings(); };
+  $("settingsBtn").onclick = openSettings;
+  $("closeSettings").onclick = () => { $("settings").hidden = true; };
+  $("saveSettings").onclick = () => {
+    let url = $("setWorkerUrl").value.trim();
+    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+    localStorage.setItem(URL_KEY, url);
+    $("setWorkerUrl").value = url;
+    const w = parseFloat($("setWeight").value);
+    if (w > 0) {
+      saveProfile({
+        weight: w, unit: draft.unit, activity: draft.activity,
+        maintenance: maintenanceFor(w, draft.unit, draft.activity),
+        goalKey: draft.goalKey, custom: draft.custom, updatedAt: Date.now(),
+      });
+    }
+    $("savedFlash").hidden = false;
+    render();
   };
 
-  // first-run: open settings if no backend configured yet
-  if (!localStorage.getItem(URL_KEY)) openSettings();
-
+  // ================= boot =================
+  if (!loadProfile()) openOnboarding();
+  updateMic();
   render();
 })();
 </script>
