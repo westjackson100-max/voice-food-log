@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Fuel"/>
+<meta name="app-build" content="20260908-062801"/>
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate"/>
 <title>Fuel</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>"/>
 <style>
@@ -2048,6 +2050,27 @@ try {
     saveTimer = setTimeout(commitUrl, 500);
   });
   urlInput.addEventListener("blur", commitUrl);
+
+  /* ============================ self-update ============================
+     Added to the home screen, iOS caches the page and offers no reload
+     control. Compare the deployed build stamp against ours and reload once
+     when it differs, so updates arrive without clearing site data (which
+     would destroy the log). */
+  (async function checkForUpdate() {
+    const meta = document.querySelector('meta[name="app-build"]');
+    const build = meta && meta.getAttribute("content");
+    if (!build) return;
+    try {
+      const res = await fetch(location.pathname + "?_=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) return;
+      const m = (await res.text()).match(/name="app-build" content="([^"]+)"/);
+      if (!m || m[1] === build) return;
+      // Reload at most once per newer build, so a mismatch can't loop.
+      if (sessionStorage.getItem("vfl.updateTo") === m[1]) return;
+      sessionStorage.setItem("vfl.updateTo", m[1]);
+      location.reload();
+    } catch {}
+  })();
 
   /* ============================ appearance ============================ */
   const THEME_KEY = "vfl.theme";
