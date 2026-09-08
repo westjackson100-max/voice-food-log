@@ -1155,6 +1155,11 @@ html[data-theme="dark"]{--card-edge:rgba(238,255,244,.26)}
 /* ---- fix: body background was hardcoded dark, so light theme leaked dark
         edges and iOS rubber-band overscroll showed black ---- */
 html,body{background:var(--bg)!important}
+
+/* ---- fix: meal cards used margin:0 -2px, overhanging the macro band by 2px
+        each side and looking clipped at the screen edge. Align them flush
+        with the macro band and section header. ---- */
+.entry{margin-left:0!important;margin-right:0!important}
 </style>
 </head>
 <body>
