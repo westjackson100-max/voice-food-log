@@ -1137,12 +1137,7 @@ html[data-theme="dark"]{--warning-rgb:208,160,100}
 .voice-dock{width:min(calc(100vw - 32px),448px)!important}
 .type-composer,.manual-popover{width:min(calc(100vw - 32px),448px)!important}
 
-/* ---- fix: meal-card edges were painted at 5.5% opacity and read as missing ---- */
-:root{--card-edge:rgba(16,20,17,.20)}
-@media (prefers-color-scheme:dark){:root{--card-edge:rgba(238,255,244,.26)}}
-html[data-theme="light"]{--card-edge:rgba(16,20,17,.20)}
-html[data-theme="dark"]{--card-edge:rgba(238,255,244,.26)}
-.entry{border-color:var(--card-edge)!important}
+/* meal-card edges intentionally use --soft-line, matching the macro cards */
 
 /* ---- theme control ---- */
 .theme-toggle{display:grid;grid-template-columns:1fr 1fr 1fr;padding:4px;border:1px solid var(--line);
