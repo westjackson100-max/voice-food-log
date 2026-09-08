@@ -1116,13 +1116,14 @@ html[data-theme="dark"]{--warning-rgb:208,160,100}
 .history-stack.clean-collapsing .history-stack-preview{transition:none!important;}
 
 /* ---- additions for the live app (day nav, empty log, status messaging) ---- */
-.daynav{display:flex;align-items:center;gap:2px;margin-left:-6px}
-.day-arrow{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
-  background:none;border:0;color:var(--muted);font-size:17px;line-height:1;cursor:pointer;
-  transition:background .18s ease,transform .18s ease,color .18s ease}
+.eyebrow.daynav{display:flex;align-items:center;gap:3px;margin-left:-7px}
+.day-arrow{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:none;border:0;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;
+  transition:background .18s ease,transform .18s ease,color .18s ease;
+  font-weight:600;letter-spacing:0;padding:0;flex:0 0 auto}
 .day-arrow:active{transform:scale(.9);background:var(--surface-2)}
-.day-arrow[disabled]{opacity:.28;pointer-events:none}
-#dayLabel{min-width:104px;text-align:center}
+.day-arrow[disabled]{opacity:.26;pointer-events:none}
+#heroEyebrow{white-space:nowrap}
 .entry-note-summary:empty{display:none}
 .badge.badge-manual{background:color-mix(in srgb,var(--muted) 16%,transparent);color:var(--muted)}
 .badge.badge-edited{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
@@ -1171,19 +1172,16 @@ try {
 <!-- ===================== TODAY ===================== -->
 <section class="screen active" data-screen="today">
   <header class="topbar">
-    <div>
-      <div class="brand"><span aria-hidden="true" class="brand-mark"></span>Fuel</div>
-      <div class="date daynav">
-        <button class="day-arrow" id="prevDay" type="button" aria-label="Previous day">&lsaquo;</button>
-        <span id="dayLabel">Today</span>
-        <button class="day-arrow" id="nextDay" type="button" aria-label="Next day">&rsaquo;</button>
-      </div>
-    </div>
+    <div class="brand"><span aria-hidden="true" class="brand-mark"></span>Fuel</div>
     <button aria-label="Open menu" class="preview-trigger" data-preview="" title="Menu">•••</button>
   </header>
   <main>
     <section class="hero">
-      <div class="eyebrow" id="heroEyebrow">Today</div>
+      <div class="eyebrow daynav">
+        <button class="day-arrow" id="prevDay" type="button" aria-label="Previous day">&lsaquo;</button>
+        <span id="heroEyebrow">Today</span>
+        <button class="day-arrow" id="nextDay" type="button" aria-label="Next day">&rsaquo;</button>
+      </div>
       <div class="calorie-row">
         <div><div class="calories" id="calCount">0</div><div class="cal-label">calories eaten</div></div>
         <div class="goal-side"><div class="status" id="calStatus">&mdash;</div><div class="goal" id="calGoal">&mdash;</div></div>
@@ -1445,9 +1443,7 @@ try {
     const profile = loadProfile();
     const goal = goalFor(profile) || 2000;
 
-    // header / day nav
-    $("dayLabel").textContent = key === todayKey ? "Today"
-      : viewedDate.toLocaleDateString([], { month: "short", day: "numeric" });
+    // date + day nav (single place, above the calorie number)
     $("heroEyebrow").textContent = key === todayKey
       ? "Today"
       : viewedDate.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
