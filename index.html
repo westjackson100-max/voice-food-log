@@ -1131,9 +1131,40 @@ html[data-theme="dark"]{--warning-rgb:208,160,100}
 .field-note{font-size:11.5px;color:var(--muted);margin:8px 4px 0;line-height:1.5}
 .maintenance-card.compact{margin:6px 0 4px}
 #entriesList{padding-bottom:20px}
+
+/* ---- fix: fill the device width (was capped at 375px) ---- */
+.app-shell{width:min(100vw,480px)!important}
+.voice-dock{width:min(calc(100vw - 32px),448px)!important}
+.type-composer,.manual-popover{width:min(calc(100vw - 32px),448px)!important}
+
+/* ---- fix: meal-card edges were painted at 5.5% opacity and read as missing ---- */
+:root{--card-edge:rgba(16,20,17,.14)}
+@media (prefers-color-scheme:dark){:root{--card-edge:rgba(238,255,244,.13)}}
+html[data-theme="light"]{--card-edge:rgba(16,20,17,.14)}
+html[data-theme="dark"]{--card-edge:rgba(238,255,244,.13)}
+.entry{border-color:var(--card-edge)!important}
+
+/* ---- theme control ---- */
+.theme-toggle{display:grid;grid-template-columns:1fr 1fr 1fr;padding:4px;border:1px solid var(--line);
+  background:var(--surface);border-radius:16px;width:186px}
+.theme-toggle button{min-width:44px;min-height:44px;border-radius:12px;color:var(--muted);
+  font-size:12px;font-weight:680;transition:.2s var(--ease);background:none;border:0;cursor:pointer}
+.theme-toggle button.active{background:var(--surface-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--soft-line)}
+.theme-toggle button:active{transform:scale(.97)}
+
+/* ---- fix: body background was hardcoded dark, so light theme leaked dark
+        edges and iOS rubber-band overscroll showed black ---- */
+html,body{background:var(--bg)!important}
 </style>
 </head>
 <body>
+<script>
+/* Apply the saved theme before first paint so there is no light/dark flash. */
+try {
+  var t = localStorage.getItem("vfl.theme");
+  if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+} catch (e) {}
+</script>
 <div class="app-shell" id="app">
 <div aria-hidden="true" class="charge-field"><div class="charge-wash"></div><span class="charge-ring"></span><span class="charge-ring"></span><span class="charge-ring"></span><span class="charge-ring"></span></div>
 
@@ -1238,6 +1269,7 @@ html[data-theme="dark"]{--warning-rgb:208,160,100}
   <div class="settings-group">
     <div class="settings-row"><div class="settings-key">Bodyweight</div><input aria-label="Bodyweight" class="settings-input" id="setWeight" inputmode="decimal" type="number"/></div>
     <div class="settings-row"><div class="settings-key">Units</div><div class="unit-toggle" style="width:112px" id="setUnits"><button class="active" data-unit="lb" type="button">lb</button><button data-unit="kg" type="button">kg</button></div></div>
+    <div class="settings-row"><div class="settings-key">Appearance</div><div class="theme-toggle" id="themeToggle"><button data-theme-choice="auto" type="button">Auto</button><button data-theme-choice="light" type="button">Light</button><button data-theme-choice="dark" type="button">Dark</button></div></div>
   </div>
   <div class="field-label">Activity level</div>
   <div class="activity-list settings-inline-list" id="setActivity"></div>
@@ -2021,7 +2053,38 @@ html[data-theme="dark"]{--warning-rgb:208,160,100}
   });
   urlInput.addEventListener("blur", commitUrl);
 
+  /* ============================ appearance ============================ */
+  const THEME_KEY = "vfl.theme";
+  function applyTheme(choice) {
+    if (choice === "light" || choice === "dark") document.documentElement.setAttribute("data-theme", choice);
+    else document.documentElement.removeAttribute("data-theme");
+    try { localStorage.setItem(THEME_KEY, choice); } catch {}
+    // keep the iOS status-bar tint in step with the chosen theme
+    const dark = choice === "dark" ||
+      (choice === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
+      m.setAttribute("content", dark ? "#0b0d0c" : "#f6f7f4");
+      m.removeAttribute("media");
+    });
+    renderThemeToggle();
+  }
+  function currentTheme() {
+    try { return localStorage.getItem(THEME_KEY) || "auto"; } catch { return "auto"; }
+  }
+  function renderThemeToggle() {
+    const cur = currentTheme();
+    document.querySelectorAll("#themeToggle button").forEach((b) => {
+      const on = b.dataset.themeChoice === cur;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  document.querySelectorAll("#themeToggle button").forEach((b) => {
+    b.addEventListener("click", () => applyTheme(b.dataset.themeChoice));
+  });
+
   /* ============================ boot ============================ */
+  applyTheme(currentTheme());
   draft = newDraft();
   renderToday();
   if (!loadProfile()) { renderOb1(); go("onboarding1"); }
